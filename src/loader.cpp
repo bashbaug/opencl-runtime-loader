@@ -1562,7 +1562,7 @@ CL_API_ENTRY cl_int CL_API_CALL clGetPlatformIDs(
     cl_uint* num_platforms)
 {
     static _sclModuleHandle module = _sclOpenICDLoader();
-    _sclpfn_clGetPlatformIDs _clGetPlatformIDs = 
+    _sclpfn_clGetPlatformIDs _clGetPlatformIDs =
         (_sclpfn_clGetPlatformIDs)_sclGetFunctionAddress(
             module, "clGetPlatformIDs");
     _sclpfn_clGetExtensionFunctionAddressForPlatform _clGetExtensionFunctionAddressForPlatform =
