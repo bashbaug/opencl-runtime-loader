@@ -16,8 +16,10 @@ before_install:
   - "if git grep -n '[[:blank:]]$' *.cpp *.c *.hpp *.h; then echo 'Please remove trailing whitespace from source files.'; false; fi"
 
 script:
+  - export TOP=$(pwd)
+  - git clone https://github.com/KhronosGroup/OpenCL-Headers.git external/OpenCL-Headers
   - mkdir -p build
   - cd build
-  - cmake ..
+  - cmake -DOpenCL_INCLUDE_DIRS=${TOP}/external/OpenCL-Headers ..
   - make -j 4
   - ctest
