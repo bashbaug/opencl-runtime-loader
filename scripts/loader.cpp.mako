@@ -258,6 +258,11 @@ struct _sclDispatchTable {
     /* OpenCL 2.2 */
     _sclpfn_clSetProgramReleaseCallback             clSetProgramReleaseCallback;
     _sclpfn_clSetProgramSpecializationConstant      clSetProgramSpecializationConstant;
+
+    /* OpenCL 3.0 */
+    _sclpfn_clSetContextDestructorCallback          clSetContextDestructorCallback;
+    _sclpfn_clCreateBufferWithProperties            clCreateBufferWithProperties;
+    _sclpfn_clCreateImageWithProperties             clCreateImageWithProperties;
 };
 
 struct _cl_platform_id {
@@ -344,7 +349,7 @@ CL_API_ENTRY cl_int CL_API_CALL clGetPlatformIDs(
     cl_uint* num_platforms)
 {
     static _sclModuleHandle module = _sclOpenICDLoader();
-    _sclpfn_clGetPlatformIDs _clGetPlatformIDs = 
+    _sclpfn_clGetPlatformIDs _clGetPlatformIDs =
         (_sclpfn_clGetPlatformIDs)_sclGetFunctionAddress(
             module, "clGetPlatformIDs");
     _sclpfn_clGetExtensionFunctionAddressForPlatform _clGetExtensionFunctionAddressForPlatform =
