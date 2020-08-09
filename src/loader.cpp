@@ -944,7 +944,7 @@ typedef void* _sclpfn_clUnloadPlatformCompiler;
 #ifdef CL_VERSION_1_2
 typedef cl_int (CL_API_CALL *_sclpfn_clGetKernelArgInfo)(
     cl_kernel kernel,
-    cl_uint arg_indx,
+    cl_uint arg_index,
     cl_kernel_arg_info param_name,
     size_t param_value_size,
     void* param_value,
@@ -1242,6 +1242,16 @@ typedef void* _sclpfn_clEnqueueSVMMigrateMem;
 #endif
 
 #ifdef CL_VERSION_2_2
+typedef cl_int (CL_API_CALL *_sclpfn_clSetProgramSpecializationConstant)(
+    cl_program program,
+    cl_uint spec_id,
+    size_t spec_size,
+    const void* spec_value);
+#else
+typedef void* _sclpfn_clSetProgramSpecializationConstant;
+#endif
+
+#ifdef CL_VERSION_2_2
 typedef cl_int (CL_API_CALL *_sclpfn_clSetProgramReleaseCallback)(
     cl_program program,
     void (CL_CALLBACK* pfn_notify)(cl_program program, void* user_data),
@@ -1250,14 +1260,13 @@ typedef cl_int (CL_API_CALL *_sclpfn_clSetProgramReleaseCallback)(
 typedef void* _sclpfn_clSetProgramReleaseCallback;
 #endif
 
-#ifdef CL_VERSION_2_2
-typedef cl_int (CL_API_CALL *_sclpfn_clSetProgramSpecializationConstant)(
-    cl_program program,
-    cl_uint spec_id,
-    size_t spec_size,
-    const void* spec_value);
+#ifdef CL_VERSION_3_0
+typedef cl_int (CL_API_CALL *_sclpfn_clSetContextDestructorCallback)(
+    cl_context context,
+    void (CL_CALLBACK* pfn_notify)(cl_context context, void* user_data),
+    void* user_data);
 #else
-typedef void* _sclpfn_clSetProgramSpecializationConstant;
+typedef void* _sclpfn_clSetContextDestructorCallback;
 #endif
 
 #ifdef CL_VERSION_3_0
@@ -1462,6 +1471,11 @@ struct _sclDispatchTable {
     /* OpenCL 2.2 */
     _sclpfn_clSetProgramReleaseCallback             clSetProgramReleaseCallback;
     _sclpfn_clSetProgramSpecializationConstant      clSetProgramSpecializationConstant;
+
+    /* OpenCL 3.0 */
+    _sclpfn_clSetContextDestructorCallback          clSetContextDestructorCallback;
+    _sclpfn_clCreateBufferWithProperties            clCreateBufferWithProperties;
+    _sclpfn_clCreateImageWithProperties             clCreateImageWithProperties;
 };
 
 struct _cl_platform_id {
@@ -3400,7 +3414,7 @@ CL_API_ENTRY cl_int CL_API_CALL clUnloadPlatformCompiler(
 
 CL_API_ENTRY cl_int CL_API_CALL clGetKernelArgInfo(
     cl_kernel kernel,
-    cl_uint arg_indx,
+    cl_uint arg_index,
     cl_kernel_arg_info param_name,
     size_t param_value_size,
     void* param_value,
@@ -3409,7 +3423,7 @@ CL_API_ENTRY cl_int CL_API_CALL clGetKernelArgInfo(
     _SCL_VALIDATE_HANDLE_RETURN_ERROR(kernel, CL_INVALID_KERNEL);
     return kernel->dispatch->clGetKernelArgInfo(
         kernel,
-        arg_indx,
+        arg_index,
         param_name,
         param_value_size,
         param_value,
@@ -3998,6 +4012,26 @@ CL_API_ENTRY cl_int CL_API_CALL clEnqueueSVMMigrateMem(
 
 #ifdef CL_VERSION_2_2
 
+CL_API_ENTRY cl_int CL_API_CALL clSetProgramSpecializationConstant(
+    cl_program program,
+    cl_uint spec_id,
+    size_t spec_size,
+    const void* spec_value)
+{
+    _SCL_VALIDATE_HANDLE_RETURN_ERROR(program, CL_INVALID_PROGRAM);
+    return program->dispatch->clSetProgramSpecializationConstant(
+        program,
+        spec_id,
+        spec_size,
+        spec_value);
+}
+
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+
+#ifdef CL_VERSION_2_2
+
 CL_API_ENTRY cl_int CL_API_CALL clSetProgramReleaseCallback(
     cl_program program,
     void (CL_CALLBACK* pfn_notify)(cl_program program, void* user_data),
@@ -4014,20 +4048,18 @@ CL_API_ENTRY cl_int CL_API_CALL clSetProgramReleaseCallback(
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifdef CL_VERSION_2_2
+#ifdef CL_VERSION_3_0
 
-CL_API_ENTRY cl_int CL_API_CALL clSetProgramSpecializationConstant(
-    cl_program program,
-    cl_uint spec_id,
-    size_t spec_size,
-    const void* spec_value)
+CL_API_ENTRY cl_int CL_API_CALL clSetContextDestructorCallback(
+    cl_context context,
+    void (CL_CALLBACK* pfn_notify)(cl_context context, void* user_data),
+    void* user_data)
 {
-    _SCL_VALIDATE_HANDLE_RETURN_ERROR(program, CL_INVALID_PROGRAM);
-    return program->dispatch->clSetProgramSpecializationConstant(
-        program,
-        spec_id,
-        spec_size,
-        spec_value);
+    _SCL_VALIDATE_HANDLE_RETURN_ERROR(context, CL_INVALID_CONTEXT);
+    return context->dispatch->clSetContextDestructorCallback(
+        context,
+        pfn_notify,
+        user_data);
 }
 
 #endif

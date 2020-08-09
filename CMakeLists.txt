@@ -18,17 +18,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
+cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_CXX_STANDARD 11)
 
-project(OpenCLRuntimeLoader LANGUAGES CXX)
+project(OpenCLRuntimeLoader LANGUAGES C CXX)
 
-if(NOT ${OpenCL_INCLUDE_DIRS})
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(CTest)
+endif()
+
+if(NOT DEFINED OpenCL_INCLUDE_DIRS)
     find_package(OpenCL)
 endif()
-include_directories(
-    ${OpenCL_INCLUDE_DIRS}
-)
 
 set( OpenCLRuntimeLoader_SOURCE_FILES
     src/loader.cpp
@@ -38,8 +42,9 @@ source_group(Source FILES ${OpenCLRuntimeLoader_SOURCE_FILES})
 
 add_library(OpenCLRuntimeLoader STATIC ${OpenCLRuntimeLoader_SOURCE_FILES})
 set_target_properties(OpenCLRuntimeLoader PROPERTIES FOLDER "OpenCLRuntimeLoader")
-target_link_libraries(OpenCLRuntimeLoader ${CMAKE_DL_LIBS})
-target_compile_definitions(OpenCLRuntimeLoader PRIVATE CL_TARGET_OPENCL_VERSION=220)
+target_include_directories(OpenCLRuntimeLoader PUBLIC ${OpenCL_INCLUDE_DIRS})
+target_compile_definitions(OpenCLRuntimeLoader PRIVATE CL_TARGET_OPENCL_VERSION=300)
+target_link_libraries(OpenCLRuntimeLoader PRIVATE ${CMAKE_DL_LIBS})
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     target_compile_options(OpenCLRuntimeLoader PRIVATE /EHsc)
@@ -50,7 +55,15 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     # TODO
 endif()
 
-install (TARGETS OpenCLRuntimeLoader
-    RUNTIME DESTINATION bin
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib)
+include(GNUInstallDirs)
+install(TARGETS OpenCLRuntimeLoader
+    EXPORT OpenCLRuntimeLoader
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
