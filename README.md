@@ -1,4 +1,5 @@
 # OpenCL Runtime Loader
+Linux: [![Linux Build Status](https://travis-ci.org/bashbaug/opencl-runtime-loader.svg?branch=master)](https://travis-ci.org/bashbaug/opencl-runtime-loader)
 
 This repository contains a static runtime loader library for OpenCL APIs.
 
