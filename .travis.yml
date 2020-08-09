@@ -6,7 +6,6 @@ compiler:
 
 os:
   - linux
-  - osx
 
 # Basic coding standard checks:
 # - Uses spaces, not tabs.
