@@ -260,9 +260,9 @@ struct _sclDispatchTable {
     _sclpfn_clSetProgramSpecializationConstant      clSetProgramSpecializationConstant;
 
     /* OpenCL 3.0 */
-    _sclpfn_clSetContextDestructorCallback          clSetContextDestructorCallback;
     _sclpfn_clCreateBufferWithProperties            clCreateBufferWithProperties;
     _sclpfn_clCreateImageWithProperties             clCreateImageWithProperties;
+    _sclpfn_clSetContextDestructorCallback          clSetContextDestructorCallback;
 };
 
 struct _cl_platform_id {
