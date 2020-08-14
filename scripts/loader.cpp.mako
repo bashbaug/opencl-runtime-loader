@@ -45,8 +45,7 @@ apihandles = {
 #ifdef _WIN32
 #include <malloc.h>
 #include <windows.h>
-#endif
-#ifdef __linux__
+#else
 #include <dlfcn.h>
 #endif
 
@@ -316,8 +315,7 @@ struct _cl_sampler {
 typedef HMODULE _sclModuleHandle;
 #define _sclOpenICDLoader()                     ::LoadLibraryA("OpenCL.dll")
 #define _sclGetFunctionAddress(_module, _name)  ::GetProcAddress(_module, _name)
-#endif
-#ifdef __linux__
+#else
 typedef void*   _sclModuleHandle;
 #define _sclOpenICDLoader()                     ::dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL)
 #define _sclGetFunctionAddress(_module, _name)  ::dlsym(_module, _name)
