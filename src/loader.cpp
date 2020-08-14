@@ -29,6 +29,10 @@
 #include <dlfcn.h>
 #endif
 
+#ifdef __ANDROID_API__
+#include <alloca.h>
+#endif
+
 #define _SCL_MAX_NUM_PLATFORMS 64
 
 #define _SCL_VALIDATE_HANDLE_RETURN_ERROR(_handle, _error)              \
