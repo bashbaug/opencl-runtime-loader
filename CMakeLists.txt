@@ -48,7 +48,7 @@ target_include_directories(OpenCLRuntimeLoader PUBLIC ${OpenCL_INCLUDE_DIRS})
 target_compile_definitions(OpenCLRuntimeLoader PRIVATE CL_TARGET_OPENCL_VERSION=300)
 target_link_libraries(OpenCLRuntimeLoader PRIVATE ${CMAKE_DL_LIBS})
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if(MSVC)
     target_compile_options(OpenCLRuntimeLoader PRIVATE /EHsc)
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     target_compile_options(OpenCLRuntimeLoader PRIVATE -Wall)
