@@ -52,7 +52,6 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     target_compile_options(OpenCLRuntimeLoader PRIVATE /EHsc)
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     target_compile_options(OpenCLRuntimeLoader PRIVATE -Wall)
-    set_target_properties(OpenCLRuntimeLoader PROPERTIES LINK_FLAGS "-Wl,--version-script")
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     # TODO
 endif()
