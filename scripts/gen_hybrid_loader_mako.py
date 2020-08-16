@@ -57,7 +57,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     specpath = args.registry
-    #specpath = "https://raw.githubusercontent.com/KhronosGroup/OpenCL-Registry/master/xml/cl.xml"
+    #specpath = "https://raw.githubusercontent.com/KhronosGroup/OpenCL-Docs/master/xml/cl.xml"
 
     print('Parsing XML file from: ' + specpath)
     spec = parse_xml(specpath)
