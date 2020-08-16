@@ -7,12 +7,30 @@ compiler:
 os:
   - linux
 
+env:
+  global:
+    - PATH=/opt/python/3.7.1/bin:$PATH
+
 # Basic coding standard checks:
 # - Uses spaces, not tabs.
 # - No trailing whitespace.
 before_install:
   - "if git grep -n $'\t'          *.cpp *.c *.hpp *.h; then echo 'Please replace tabs with spaces in source files.';     false; fi"
   - "if git grep -n '[[:blank:]]$' *.cpp *.c *.hpp *.h; then echo 'Please remove trailing whitespace from source files.'; false; fi"
+
+install:
+  - python -VV
+  - python3 -VV
+  - pip -V
+  - pip3 -V
+  - pip3 install --user mako
+
+before_script:
+  - "mkdir temp"
+  - "pushd scripts"
+  - "python3 gen_hybrid_loader_mako.py -registry https://raw.githubusercontent.com/KhronosGroup/OpenCL-Docs/master/xml/cl.xml -o ../temp"
+  - "popd"
+  - "if ! diff src/loader.cpp temp/loader.cpp; then echo 'Please ensure all files are generated correctly.'; false; fi"
 
 script:
   - export TOP=$(pwd)
