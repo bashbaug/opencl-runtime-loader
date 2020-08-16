@@ -26,6 +26,8 @@ set(CMAKE_CXX_STANDARD 11)
 
 project(OpenCLRuntimeLoader LANGUAGES C CXX)
 
+option(BUILD_SHARED_LIBS "Set to ON to build a shared library." OFF)
+
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
 endif()
@@ -40,17 +42,16 @@ set( OpenCLRuntimeLoader_SOURCE_FILES
 
 source_group(Source FILES ${OpenCLRuntimeLoader_SOURCE_FILES})
 
-add_library(OpenCLRuntimeLoader STATIC ${OpenCLRuntimeLoader_SOURCE_FILES})
+add_library(OpenCLRuntimeLoader ${OpenCLRuntimeLoader_SOURCE_FILES})
 set_target_properties(OpenCLRuntimeLoader PROPERTIES FOLDER "OpenCLRuntimeLoader")
 target_include_directories(OpenCLRuntimeLoader PUBLIC ${OpenCL_INCLUDE_DIRS})
 target_compile_definitions(OpenCLRuntimeLoader PRIVATE CL_TARGET_OPENCL_VERSION=300)
 target_link_libraries(OpenCLRuntimeLoader PRIVATE ${CMAKE_DL_LIBS})
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if(MSVC)
     target_compile_options(OpenCLRuntimeLoader PRIVATE /EHsc)
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     target_compile_options(OpenCLRuntimeLoader PRIVATE -Wall)
-    set_target_properties(OpenCLRuntimeLoader PROPERTIES LINK_FLAGS "-Wl,--version-script")
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     # TODO
 endif()
