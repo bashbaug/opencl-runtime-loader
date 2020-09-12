@@ -33,6 +33,8 @@
 #include <alloca.h>
 #endif
 
+#include <atomic>
+
 #define _SCL_MAX_NUM_PLATFORMS 64
 
 #define _SCL_VALIDATE_HANDLE_RETURN_ERROR(_handle, _error)              \
@@ -1531,12 +1533,33 @@ struct _cl_sampler {
 #ifdef _WIN32
 typedef HMODULE _sclModuleHandle;
 #define _sclOpenICDLoader()                     ::LoadLibraryA("OpenCL.dll")
+#define _sclCloseICDLoader(_module)             ::FreeLibrary(_module)
 #define _sclGetFunctionAddress(_module, _name)  ::GetProcAddress(_module, _name)
 #else
 typedef void*   _sclModuleHandle;
 #define _sclOpenICDLoader()                     ::dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL)
+#define _sclCloseICDLoader(_module)             ::dlclose(_module)
 #define _sclGetFunctionAddress(_module, _name)  ::dlsym(_module, _name)
 #endif
+
+static std::atomic<_sclModuleHandle> g_ICDLoaderHandle{NULL};
+
+// This is a helper function to safely get a handle the ICD loader:
+static inline _sclModuleHandle _sclGetICDLoaderHandle(void)
+{
+    _sclModuleHandle ret = g_ICDLoaderHandle.load();
+    if (ret == NULL) {
+        _sclModuleHandle loaded = _sclOpenICDLoader();
+        if (loaded != NULL) {
+            if (g_ICDLoaderHandle.compare_exchange_strong(ret, loaded)) {
+                ret = loaded;
+            } else {
+                _sclCloseICDLoader(loaded);
+            }
+        }
+    }
+    return ret;
+}
 
 // This is a helper function to find a platform from context properties:
 static inline cl_platform_id _sclGetPlatfromFromContextProperties(
@@ -1563,7 +1586,7 @@ CL_API_ENTRY cl_int CL_API_CALL clGetPlatformIDs(
     cl_platform_id* platforms,
     cl_uint* num_platforms)
 {
-    static _sclModuleHandle module = _sclOpenICDLoader();
+    _sclModuleHandle module = _sclGetICDLoaderHandle();
     _sclpfn_clGetPlatformIDs _clGetPlatformIDs =
         (_sclpfn_clGetPlatformIDs)_sclGetFunctionAddress(
             module, "clGetPlatformIDs");
@@ -1638,7 +1661,7 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(
     const char* function_name)
 {
 #if 0
-    static _sclModuleHandle module = _sclOpenICDLoader();
+    _sclModuleHandle module = _sclGetICDLoaderHandle();
     _sclpfn_clGetExtensionFunctionAddress _clGetExtensionFunctionAddress =
         (_sclpfn_clGetExtensionFunctionAddress)::GetProcAddress(
             module, "clGetExtensionFunctionAddress");
