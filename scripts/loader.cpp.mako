@@ -324,7 +324,14 @@ typedef HMODULE _sclModuleHandle;
 #define _sclGetFunctionAddress(_module, _name)  ::GetProcAddress(_module, _name)
 #else
 typedef void*   _sclModuleHandle;
-#define _sclOpenICDLoader()                     ::dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL)
+static inline _sclModuleHandle _sclOpenICDLoader()
+{
+    _sclModuleHandle ret = ::dlopen("libOpenCL.so.1", RTLD_LAZY | RTLD_LOCAL);
+    if (ret == NULL) {
+        ret = ::dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
+    }
+    return ret;
+}
 #define _sclCloseICDLoader(_module)             ::dlclose(_module)
 #define _sclGetFunctionAddress(_module, _name)  ::dlsym(_module, _name)
 #endif
@@ -373,18 +380,23 @@ CL_API_ENTRY cl_int CL_API_CALL clGetPlatformIDs(
     cl_platform_id* platforms,
     cl_uint* num_platforms)
 {
-    _sclModuleHandle module = _sclGetICDLoaderHandle();
-    _sclpfn_clGetPlatformIDs _clGetPlatformIDs =
-        (_sclpfn_clGetPlatformIDs)_sclGetFunctionAddress(
-            module, "clGetPlatformIDs");
-    _sclpfn_clGetExtensionFunctionAddressForPlatform _clGetExtensionFunctionAddressForPlatform =
-        (_sclpfn_clGetExtensionFunctionAddressForPlatform)_sclGetFunctionAddress(
-            module, "clGetExtensionFunctionAddressForPlatform");
-
     // Basic error checks:
     if ((platforms == NULL && num_entries != 0) ||
         (platforms == NULL && num_platforms == NULL)) {
         return CL_INVALID_VALUE;
+    }
+
+    _sclModuleHandle module = _sclGetICDLoaderHandle();
+    _sclpfn_clGetPlatformIDs _clGetPlatformIDs = NULL;
+    _sclpfn_clGetExtensionFunctionAddressForPlatform _clGetExtensionFunctionAddressForPlatform = NULL;
+
+    if (module) {
+        _clGetPlatformIDs =
+            (_sclpfn_clGetPlatformIDs)_sclGetFunctionAddress(
+                module, "clGetPlatformIDs");
+        _clGetExtensionFunctionAddressForPlatform =
+            (_sclpfn_clGetExtensionFunctionAddressForPlatform)_sclGetFunctionAddress(
+                module, "clGetExtensionFunctionAddressForPlatform");
     }
 
     if (_clGetPlatformIDs) {
