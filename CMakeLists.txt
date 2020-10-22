@@ -50,10 +50,8 @@ target_link_libraries(OpenCLRuntimeLoader PRIVATE ${CMAKE_DL_LIBS})
 
 if(MSVC)
     target_compile_options(OpenCLRuntimeLoader PRIVATE /EHs-c-)
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+else()
     target_compile_options(OpenCLRuntimeLoader PRIVATE -Wall -fno-exceptions)
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-    # TODO
 endif()
 
 include(GNUInstallDirs)
