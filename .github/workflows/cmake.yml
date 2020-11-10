@@ -23,6 +23,11 @@ jobs:
         repository: KhronosGroup/OpenCL-Headers
         path: external/OpenCL-Headers
 
+    - name: Print Directory Contents
+      shell: bash
+      working-directory: ${{runner.workspace}}
+      run: ls -R
+
     - name: Create Build Directory
       run: cmake -E make_directory ${{runner.workspace}}/build
 
