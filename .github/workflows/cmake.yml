@@ -27,12 +27,12 @@ jobs:
 
     - name: Check Generated Files
       shell: bash
-      working-directory: ${{runner.workspace}}
+      working-directory: $GITHUB_WORKSPACE
       run: |
         mkdir temp
         pushd scripts
         python3 gen_hybrid_loader_mako.py -registry https://raw.githubusercontent.com/KhronosGroup/OpenCL-Docs/master/xml/cl.xml -o ../temp
-        popd"
+        popd
         if ! diff src/loader.cpp temp/loader.cpp; then echo 'Please ensure all files are generated correctly.'; false; fi
 
     - name: Get OpenCL Headers
