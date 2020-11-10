@@ -36,6 +36,11 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       run: cmake -DOpenCL_INCLUDE_DIRS=${{runner.workspace}}/external/OpenCL-Headers -DCMAKE_BUILD_TYPE=$BUILD_TYPE $GITHUB_WORKSPACE
 
+    - name: Check for OpenCL Headers
+      shell: bash
+      working-directory: ${{runner.workspace}}
+      run: ls ${{runner.workspace}}/external/OpenCL-Headers
+
     - name: Build
       working-directory: ${{runner.workspace}}/build
       shell: bash
