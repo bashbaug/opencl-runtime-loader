@@ -48,6 +48,7 @@ apihandles = {
 #include <dlfcn.h>
 #endif
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -512,7 +513,7 @@ static inline void _sclFilterPlatforms(
             platformExtensions);
 
         if (errorCode == CL_SUCCESS) {
-            cl_version version = _sclGetMajorMinorVersion(platformVersion);
+            cl_uint version = _sclGetMajorMinorVersion(platformVersion);
 
             bool has_cl_khr_icd =
                 _sclHasExtension(platformExtensions, "cl_khr_icd");
