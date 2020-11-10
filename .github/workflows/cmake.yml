@@ -16,6 +16,25 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+
+    - name: Install Python Dependencies
+      run: |
+        pip install mako
+
+    - name: Check Generated Files
+      shell: bash
+      working-directory: ${{runner.workspace}}
+      run: |
+        mkdir temp
+        pushd scripts
+        python3 gen_hybrid_loader_mako.py -registry https://raw.githubusercontent.com/KhronosGroup/OpenCL-Docs/master/xml/cl.xml -o ../temp
+        popd"
+        if ! diff src/loader.cpp temp/loader.cpp; then echo 'Please ensure all files are generated correctly.'; false; fi
+
     - name: Get OpenCL Headers
       uses: actions/checkout@master
       with:
