@@ -23,19 +23,15 @@
 #include <CL/cl.h>
 
 #ifdef _WIN32
-#include <malloc.h>
 #include <windows.h>
 #else
 #include <dlfcn.h>
 #endif
 
-#ifdef __ANDROID_API__
-#include <alloca.h>
-#endif
+#include <stdlib.h>
+#include <string.h>
 
 #include <atomic>
-
-#define _SCL_MAX_NUM_PLATFORMS 64
 
 #define _SCL_VALIDATE_HANDLE_RETURN_ERROR(_handle, _error)              \
     if (_handle == NULL) return _error;
@@ -1549,6 +1545,8 @@ static inline _sclModuleHandle _sclOpenICDLoader()
 #define _sclGetFunctionAddress(_module, _name)  ::dlsym(_module, _name)
 #endif
 
+#define _SCL_MAKE_VERSION(_major, _minor)   (((_major) << 16) | (_minor))
+
 static std::atomic<_sclModuleHandle> g_ICDLoaderHandle{NULL};
 
 // This is a helper function to safely get a handle the ICD loader:
@@ -1566,6 +1564,191 @@ static inline _sclModuleHandle _sclGetICDLoaderHandle(void)
         }
     }
     return ret;
+}
+
+// This is a helper function to allocate and get a platform info string.
+// The platform info string returned by this function must be freed!
+static inline cl_int _sclAllocateAndGetPlatformInfoString(
+    _sclpfn_clGetPlatformInfo _clGetPlatformInfo,
+    cl_platform_id platform,
+    cl_platform_info param_name,
+    char*& param_value)
+{
+    cl_int errorCode = CL_SUCCESS;
+    size_t size = 0;
+
+    if (_clGetPlatformInfo == NULL) {
+        return CL_INVALID_OPERATION;
+    }
+
+    if (param_value != NULL) {
+        return CL_INVALID_VALUE;
+    }
+
+    errorCode = _clGetPlatformInfo(
+        platform,
+        param_name,
+        0,
+        NULL,
+        &size);
+
+    if (errorCode == CL_SUCCESS && size != 0) {
+        param_value = (char*)malloc(size);
+        if (param_value == NULL) {
+            errorCode = CL_OUT_OF_HOST_MEMORY;
+        }
+    }
+
+    if (errorCode == CL_SUCCESS) {
+        errorCode = _clGetPlatformInfo(
+            platform,
+            param_name,
+            size,
+            param_value,
+            NULL);
+    }
+
+    if (errorCode != CL_SUCCESS) {
+        free(param_value);
+        param_value = NULL;
+    }
+
+    return errorCode;
+}
+
+// This is a helper function to get a major and minor version from a string.
+// The string is expected to be formatted as a platform or device version
+// string, with the format: "OpenCL <major>.<minor>".  If the string is
+// not formatted properly, a version equal to 0.0.0 will be returned.
+static inline cl_uint _sclGetMajorMinorVersion(
+    const char* versionString)
+{
+    const char* prefix = "OpenCL ";
+    const char* str = versionString;
+
+    cl_uint major = 0;
+    cl_uint minor = 0;
+
+    if (str) {
+        if (strncmp(str, prefix, strlen(prefix)) == 0) {
+            str += strlen(prefix);
+            while (isdigit(str[0])) {
+                major *= 10;
+                major += str[0] - '0';
+                str++;
+            }
+            if (str[0] == '.') {
+                str++;
+            }
+            while (isdigit(str[0])) {
+                minor *= 10;
+                minor += str[0] - '0';
+                str++;
+            }
+            return _SCL_MAKE_VERSION(major, minor);
+        }
+    }
+
+    return _SCL_MAKE_VERSION(0, 0);
+}
+
+// This is a helper function to check an extension string for an extension.
+static inline bool _sclHasExtension(
+    const char* extensionString,
+    const char* extensionName)
+{
+    // Check that the extension name is not NULL and does not contain a space.
+    if (extensionName == NULL || strchr(extensionName, ' ')) {
+        return false;
+    }
+
+    bool supported = false;
+
+    const char* start = extensionString;
+    while (true) {
+        const char* where = strstr(start, extensionName);
+        if (!where) {
+            break;
+        }
+        const char* terminator = where + strlen(extensionName);
+        if (where == start || *(where - 1) == ' ') {
+            if (*terminator == ' ' || *terminator == '\0') {
+                supported = true;
+                break;
+            }
+        }
+        start = terminator;
+    }
+
+    return supported;
+}
+
+// This is a helper function to determine if we can return this platform:
+static inline void _sclFilterPlatforms(
+    _sclModuleHandle module,
+    cl_uint total_num_platforms,
+    cl_platform_id* all_platforms,
+    cl_uint num_entries,
+    cl_platform_id* platforms,
+    cl_uint* num_platforms)
+{
+    _sclpfn_clGetPlatformInfo _clGetPlatformInfo =
+        (_sclpfn_clGetPlatformInfo)_sclGetFunctionAddress(
+            module, "clGetPlatformInfo");
+    _sclpfn_clGetExtensionFunctionAddressForPlatform
+        _clGetExtensionFunctionAddressForPlatform =
+            (_sclpfn_clGetExtensionFunctionAddressForPlatform)
+                _sclGetFunctionAddress(
+                    module, "clGetExtensionFunctionAddressForPlatform");
+
+    cl_uint num_icd_platforms = 0;
+
+    for (cl_uint p = 0; p < total_num_platforms; p++) {
+        // Include this platform if the ICD extension cl_khr_icd is in the
+        // platform extension string, or if this is an OpenCL 1.2 or newer
+        // platform and we can get a function pointer to the ICD function
+        // clIcdGetPlatformIDsKHR.
+        cl_int errorCode = CL_SUCCESS;
+
+        char* platformVersion = NULL;
+        char* platformExtensions = NULL;
+
+        errorCode |= _sclAllocateAndGetPlatformInfoString(
+            _clGetPlatformInfo,
+            all_platforms[p],
+            CL_PLATFORM_VERSION,
+            platformVersion);
+        errorCode |= _sclAllocateAndGetPlatformInfoString(
+            _clGetPlatformInfo,
+            all_platforms[p],
+            CL_PLATFORM_EXTENSIONS,
+            platformExtensions);
+
+        if (errorCode == CL_SUCCESS) {
+            cl_version version = _sclGetMajorMinorVersion(platformVersion);
+
+            bool has_cl_khr_icd =
+                _sclHasExtension(platformExtensions, "cl_khr_icd");
+            bool has_clIcdGetPlatformIDsKHR =
+                (version >= _SCL_MAKE_VERSION(1, 2)) &&
+                (_clGetExtensionFunctionAddressForPlatform(
+                     all_platforms[p], "clIcdGetPlatformIDsKHR") != NULL);
+
+            if (has_cl_khr_icd || has_clIcdGetPlatformIDsKHR) {
+                if (num_icd_platforms < num_entries && platforms != NULL) {
+                    platforms[num_icd_platforms] = all_platforms[p];
+                }
+                num_icd_platforms++;
+            }
+        }
+
+        free(platformVersion);
+        free(platformExtensions);
+    }
+
+    if (num_platforms) {
+        num_platforms[0] = num_icd_platforms;
+    }
 }
 
 // This is a helper function to find a platform from context properties:
@@ -1601,58 +1784,40 @@ CL_API_ENTRY cl_int CL_API_CALL clGetPlatformIDs(
 
     _sclModuleHandle module = _sclGetICDLoaderHandle();
     _sclpfn_clGetPlatformIDs _clGetPlatformIDs = NULL;
-    _sclpfn_clGetExtensionFunctionAddressForPlatform _clGetExtensionFunctionAddressForPlatform = NULL;
 
     if (module) {
         _clGetPlatformIDs =
             (_sclpfn_clGetPlatformIDs)_sclGetFunctionAddress(
                 module, "clGetPlatformIDs");
-        _clGetExtensionFunctionAddressForPlatform =
-            (_sclpfn_clGetExtensionFunctionAddressForPlatform)_sclGetFunctionAddress(
-                module, "clGetExtensionFunctionAddressForPlatform");
     }
 
     if (_clGetPlatformIDs) {
-        // Only return platforms that support the ICD extension.
         cl_int errorCode = CL_SUCCESS;
         cl_platform_id* all_platforms = NULL;
         cl_uint total_num_platforms = 0;
-        cl_uint num_icd_platforms = 0;
-        cl_uint p = 0;
 
         // Get the total number of platforms:
-        errorCode = _clGetPlatformIDs(0, NULL, &total_num_platforms);
-        if (errorCode != CL_SUCCESS) {
-            return errorCode;
-        }
+        _clGetPlatformIDs(0, NULL, &total_num_platforms);
         if (total_num_platforms >= 0) {
-            // Sanity check:
-            if (total_num_platforms > _SCL_MAX_NUM_PLATFORMS) {
-                total_num_platforms = _SCL_MAX_NUM_PLATFORMS;
-            }
-
-            all_platforms = (cl_platform_id*)alloca(
+            all_platforms = (cl_platform_id*)malloc(
                 total_num_platforms * sizeof(cl_platform_id));
+            if (all_platforms == NULL) {
+                return CL_OUT_OF_HOST_MEMORY;
+            }
+
             errorCode = _clGetPlatformIDs(total_num_platforms, all_platforms, NULL);
-            if (errorCode != CL_SUCCESS) {
-                return errorCode;
+            if (errorCode == CL_SUCCESS) {
+                _sclFilterPlatforms(
+                    module,
+                    total_num_platforms,
+                    all_platforms,
+                    num_entries,
+                    platforms,
+                    num_platforms);
             }
 
-            for (p = 0; p < total_num_platforms; p++) {
-                if (_clGetExtensionFunctionAddressForPlatform(
-                        all_platforms[p], "clIcdGetPlatformIDsKHR")) {
-                    if (num_icd_platforms < num_entries && platforms != NULL) {
-                        platforms[num_icd_platforms] = all_platforms[p];
-                    }
-                    num_icd_platforms++;
-                }
-            }
-
-            if (num_platforms) {
-                num_platforms[0] = num_icd_platforms;
-            }
-
-            return CL_SUCCESS;
+            free(all_platforms);
+            return errorCode;
         }
     }
 
