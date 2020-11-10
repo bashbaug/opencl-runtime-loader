@@ -23,23 +23,18 @@ jobs:
         repository: KhronosGroup/OpenCL-Headers
         path: external/OpenCL-Headers
 
-    - name: Print Directory Contents
-      shell: bash
-      working-directory: ${{runner.workspace}}
-      run: ls -R
-
     - name: Create Build Directory
       run: cmake -E make_directory ${{runner.workspace}}/build
 
     - name: Run CMake
       shell: bash
       working-directory: ${{runner.workspace}}/build
-      run: cmake -DOpenCL_INCLUDE_DIRS=${{runner.workspace}}/external/OpenCL-Headers -DCMAKE_BUILD_TYPE=$BUILD_TYPE $GITHUB_WORKSPACE
+      run: cmake -DOpenCL_INCLUDE_DIRS=$GITHUB_WORKSPACE/external/OpenCL-Headers -DCMAKE_BUILD_TYPE=$BUILD_TYPE $GITHUB_WORKSPACE
 
     - name: Check for OpenCL Headers
       shell: bash
       working-directory: ${{runner.workspace}}
-      run: ls ${{runner.workspace}}/external/OpenCL-Headers
+      run: ls $GITHUB_WORKSPACE/external/OpenCL-Headers
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
