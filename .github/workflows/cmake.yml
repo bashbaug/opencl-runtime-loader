@@ -20,6 +20,8 @@ jobs:
         if git grep -n '[[:blank:]]$' *.cpp *.c *.hpp *.h; then echo 'Please remove trailing whitespace from source files.'; false; fi
 
   build:
+    needs: check
+
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
