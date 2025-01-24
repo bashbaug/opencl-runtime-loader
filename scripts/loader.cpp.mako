@@ -19,7 +19,7 @@ apihandles = {
     'cl_sampler'        : 'CL_INVALID_SAMPLER',
     }
 %>/*
-// Copyright (c) 2020 Ben Ashbaugh
+// Copyright (c) 2025 Ben Ashbaugh
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -355,6 +355,17 @@ static inline _sclModuleHandle _sclGetICDLoaderHandle(void)
     return ret;
 }
 
+// This is a helper function to safely close the handle to the ICD loader:
+static inline void _sclCloseICDLoaderHandle(void)
+{
+    _sclModuleHandle ret = g_ICDLoaderHandle.load();
+    if (ret != NULL) {
+        if (g_ICDLoaderHandle.compare_exchange_strong(ret, NULL)) {
+            _sclCloseICDLoader(ret);
+        }
+    }
+}
+
 // This is a helper function to find a platform from context properties:
 static inline cl_platform_id _sclGetPlatfromFromContextProperties(
     const cl_context_properties* properties)
@@ -374,6 +385,13 @@ static inline cl_platform_id _sclGetPlatfromFromContextProperties(
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// This is an OpenCL Runtime Loader function to close the handle to the ICD loader.
+CL_API_ENTRY cl_int CL_API_CALL clTeardownOCLRT( void )
+{
+    _sclCloseICDLoaderHandle();
+    return CL_SUCCESS;
+}
 
 CL_API_ENTRY cl_int CL_API_CALL clGetPlatformIDs(
     cl_uint num_entries,
@@ -459,6 +477,9 @@ CL_API_ENTRY cl_int CL_API_CALL clGetPlatformIDs(
 CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(
     const char* function_name)
 {
+    if (strcmp(function_name, "clTeardownOCLRT") == 0) {
+        return clTeardownOCLRT;
+    }
 #if 0
     _sclModuleHandle module = _sclGetICDLoaderHandle();
     _sclpfn_clGetExtensionFunctionAddress _clGetExtensionFunctionAddress =
